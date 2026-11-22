@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # test/fixture is a deliberately broken workspace (two lodash ranges, zod both in and
+  # out of the catalog). An update there would "fix" the fixture and break the tests.
+  - package-ecosystem: npm
+    directory: /test/fixture
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"

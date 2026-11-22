@@ -8,9 +8,12 @@ branding:
 
 inputs:
   version:
-    description: "Version of catalog-doctor to run, as an npm dist-tag or exact version."
+    description: >-
+      Version of catalog-doctor to run. Defaults to the exact version this release of the
+      action was tested with, so `@v1` always runs a known build. Set an exact version or
+      an npm dist-tag (`latest`) to override.
     required: false
-    default: "latest"
+    default: "0.1.1"
   working-directory:
     description: "Directory to run in. The workspace root is found by walking up from here."
     required: false
@@ -89,6 +92,7 @@ runs:
         [ -n "$CD_IGNORE" ] && args+=(--ignore "$CD_IGNORE")
         [ -n "$CD_EXCLUDE" ] && args+=(--exclude "$CD_EXCLUDE")
 
+        # An exact package spec, so npx runs this package at this version and nothing else.
         pkg="catalog-doctor@${CD_VERSION}"
         report="${RUNNER_TEMP}/catalog-doctor.json"
 
@@ -97,14 +101,14 @@ runs:
         # reports what is genuinely left.
         echo "::group::catalog-doctor"
         status=0
-        npx --yes "$pkg" "${args[@]}" || status=$?
+        npx --yes --package "$pkg" catalog-doctor "${args[@]}" || status=$?
         echo "::endgroup::"
 
         read_args=()
         [ -n "$CD_ONLY" ] && read_args+=(--only "$CD_ONLY")
         [ -n "$CD_IGNORE" ] && read_args+=(--ignore "$CD_IGNORE")
         [ -n "$CD_EXCLUDE" ] && read_args+=(--exclude "$CD_EXCLUDE")
-        npx --yes "$pkg" "${read_args[@]}" --json > "$report" 2>/dev/null || true
+        npx --yes --package "$pkg" catalog-doctor "${read_args[@]}" --json > "$report" 2>/dev/null || true
 
         if [ ! -s "$report" ]; then
           echo "::error::catalog-doctor produced no report. Check the log above."

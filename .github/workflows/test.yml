@@ -5,8 +5,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-  # Weekly, because the action fetches catalog-doctor@latest: a regression in
-  # a new release of the package should show up here before a user hits it.
+  # Weekly, so a change in the runner image or the npm registry that breaks
+  # the action shows up here before a user hits it.
   schedule:
     - cron: "0 7 * * 1"
 
@@ -18,7 +18,8 @@ jobs:
     name: reports a broken workspace
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - id: doctor
         uses: ./
         with:
@@ -26,16 +27,20 @@ jobs:
           fail-on-findings: false
       - name: the fixture has known problems, so it must report them
         shell: bash
+        env:
+          TOTAL: ${{ steps.doctor.outputs.total }}
+          ERRORS: ${{ steps.doctor.outputs.errors }}
         run: |
-          echo "total=${{ steps.doctor.outputs.total }} errors=${{ steps.doctor.outputs.errors }}"
-          [ "${{ steps.doctor.outputs.total }}" -ge 2 ] || { echo "expected findings, got none"; exit 1; }
-          [ "${{ steps.doctor.outputs.errors }}" -ge 1 ] || { echo "expected an error-severity finding"; exit 1; }
+          echo "total=$TOTAL errors=$ERRORS"
+          [ "$TOTAL" -ge 2 ] || { echo "expected findings, got none"; exit 1; }
+          [ "$ERRORS" -ge 1 ] || { echo "expected an error-severity finding"; exit 1; }
 
   fails-the-build:
     name: fails when findings remain
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - id: doctor
         continue-on-error: true
         uses: ./
@@ -43,15 +48,18 @@ jobs:
           working-directory: test/fixture
       - name: the default must block on an error-severity finding
         shell: bash
+        env:
+          OUTCOME: ${{ steps.doctor.outcome }}
         run: |
-          [ "${{ steps.doctor.outcome }}" = "failure" ] || {
-            echo "expected the step to fail, got ${{ steps.doctor.outcome }}"; exit 1; }
+          [ "$OUTCOME" = "failure" ] || {
+            echo "expected the step to fail, got $OUTCOME"; exit 1; }
 
   scoping-works:
     name: --only narrows the run
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
       - id: doctor
         uses: ./
         with:
@@ -59,6 +67,43 @@ jobs:
           only: version-mismatch
           fail-on-findings: false
       - shell: bash
+        env:
+          TOTAL: ${{ steps.doctor.outputs.total }}
         run: |
-          [ "${{ steps.doctor.outputs.total }}" = "1" ] || {
-            echo "expected exactly the lodash mismatch, got ${{ steps.doctor.outputs.total }}"; exit 1; }
+          [ "$TOTAL" = "1" ] || {
+            echo "expected exactly the lodash mismatch, got $TOTAL"; exit 1; }
+
+  pinned-version:
+    name: runs the pinned catalog-doctor version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: the default version is an exact version
+        shell: bash
+        run: |
+          v=$(node -e 'const y=require("fs").readFileSync("action.yml","utf8"); const m=y.match(/\n  version:\n(?:    .*\n)*?    default: "([^"]+)"/); console.log(m ? m[1] : "")')
+          echo "default version: $v"
+          [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "the default version must be an exact version, got '$v'"; exit 1; }
+      - id: doctor
+        uses: ./
+        with:
+          working-directory: test/fixture
+          fail-on-findings: false
+      - name: the pinned version runs and reports
+        shell: bash
+        env:
+          REPORT: ${{ steps.doctor.outputs.report }}
+          TOTAL: ${{ steps.doctor.outputs.total }}
+        run: |
+          [ -s "$REPORT" ] || { echo "no report"; exit 1; }
+          [ "$TOTAL" -ge 2 ] || { echo "expected findings, got $TOTAL"; exit 1; }
+
+  report-is-safe:
+    name: hostile names and messages cannot forge outputs or inject markup into the summary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - shell: bash
+        run: node test/check-report.mjs

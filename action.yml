@@ -115,33 +115,7 @@ runs:
           exit "${status:-2}"
         fi
 
-        node -e '
-          const fs = require("fs");
-          const r = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-          const s = r.summary;
-          const out = process.env.GITHUB_OUTPUT;
-          fs.appendFileSync(out, `total=${s.total}\nerrors=${s.errors}\nwarnings=${s.warnings}\nfixable=${s.fixable}\nreport=${process.argv[1]}\n`);
-
-          const lines = [];
-          lines.push("## catalog-doctor");
-          lines.push("");
-          if (s.total === 0) {
-            lines.push(`No problems found across ${r.packages} package(s).`);
-          } else {
-            lines.push(`**${s.total} finding(s)** — ${s.errors} error(s), ${s.warnings} warning(s), ${s.fixable} fixable.`);
-            lines.push("");
-            lines.push("| | Rule | Dependency | Problem |");
-            lines.push("| --- | --- | --- | --- |");
-            for (const f of r.findings.slice(0, 30)) {
-              const icon = f.severity === "error" ? "🔴" : "🟡";
-              const msg = String(f.message).replace(/\|/g, "\\|");
-              lines.push(`| ${icon} | \`${f.rule}\` | \`${f.dep ?? "—"}\` | ${msg} |`);
-            }
-            if (r.findings.length > 30) lines.push(`| | | | …and ${r.findings.length - 30} more |`);
-          }
-          const summary = process.env.GITHUB_STEP_SUMMARY;
-          if (summary) fs.appendFileSync(summary, lines.join("\n") + "\n");
-        ' "$report"
+        node "$GITHUB_ACTION_PATH/lib/report.mjs" "$report"
 
         if [ "$CD_FAIL" != "true" ]; then
           exit 0

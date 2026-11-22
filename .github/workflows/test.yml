@@ -98,3 +98,12 @@ jobs:
         run: |
           [ -s "$REPORT" ] || { echo "no report"; exit 1; }
           [ "$TOTAL" -ge 2 ] || { echo "expected findings, got $TOTAL"; exit 1; }
+
+  report-is-safe:
+    name: hostile names and messages cannot forge outputs or inject markup into the summary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - shell: bash
+        run: node test/check-report.mjs

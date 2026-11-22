@@ -129,7 +129,10 @@ With the default `GITHUB_TOKEN`, the repository setting **Allow GitHub Actions t
   id: doctor
   with:
     fail-on-findings: false
-- run: echo "${{ steps.doctor.outputs.fixable }} of ${{ steps.doctor.outputs.total }} are fixable"
+- env: # pass outputs through env, not ${{ }} inside run
+    FIXABLE: ${{ steps.doctor.outputs.fixable }}
+    TOTAL: ${{ steps.doctor.outputs.total }}
+  run: echo "$FIXABLE of $TOTAL are fixable"
 ```
 
 ## Notes

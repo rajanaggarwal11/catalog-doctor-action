@@ -1,0 +1,9 @@
+{
+  "packages": 2,
+  "summary": { "total": 3, "errors": 2, "warnings": 1, "fixable": "1\ntotal=0" },
+  "findings": [
+    { "severity": "error", "rule": "version-mismatch", "dep": "lodash<img src=x onerror=alert(1)>", "message": "declared at **bold** | extra | cells" },
+    { "severity": "error", "rule": "catalog-drift", "dep": "zod`\n## forged", "message": "line\n## forged\n[link](https://example.invalid)" },
+    { "severity": "warn", "rule": "catalog-candidate", "dep": null, "message": "<script>alert(1)</script>" }
+  ]
+}
